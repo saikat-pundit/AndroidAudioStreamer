@@ -23,11 +23,9 @@ jobs:
 
     - name: Prepare Logo
       run: |
-       # Create all required mipmap folders
-        for resolution in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-        mkdir -p app/src/main/res/mipmap-$resolution
-        cp logo.png app/src/main/res/mipmap-$resolution/ic_launcher.png
-        done
+        # Simply copy logo.png to drawable folder
+        mkdir -p app/src/main/res/drawable
+        cp logo.png app/src/main/res/drawable/logo.png
 
     - name: Build with Gradle
       run: gradle assembleDebug
