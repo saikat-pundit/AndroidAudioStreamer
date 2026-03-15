@@ -84,12 +84,12 @@ class HeartbeatService : Service() {
     
     override fun onBind(intent: Intent?): IBinder? = null
     
-    class HeartbeatWorker(context: Context, params: WorkerParameters) : 
+    inner class HeartbeatWorker(context: Context, params: WorkerParameters) : 
         Worker(context, params) {
         
         override fun doWork(): Result {
             return try {
-                val intent = Intent(applicationContext, HeartbeatService::class.java)
+                val intent = Intent(this@HeartbeatService, HeartbeatService::class.java)
                 applicationContext.startService(intent)
                 Result.success()
             } catch (e: Exception) {
