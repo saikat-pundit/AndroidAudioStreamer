@@ -5,9 +5,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -28,9 +32,10 @@ class AudioStreamService : Service() {
     private var isStreaming = false
     private lateinit var wakeLock: PowerManager.WakeLock
     
+    private var mediaProjection: MediaProjection? = null
+    
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
-    // Audio configuration
     private val SAMPLE_RATE = 44100
     private val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
     private val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
@@ -52,7 +57,7 @@ class AudioStreamService : Service() {
             PowerManager.PARTIAL_WAKE_LOCK,
             "AudioStreamer:WakeLock"
         ).apply {
-            acquire(10*60*1000L) // 10 minutes
+            acquire(10*60*1000L)
         }
     }
     
@@ -86,8 +91,11 @@ class AudioStreamService : Service() {
             "START_STREAMING" -> {
                 val ipAddress = intent.getStringExtra("IP_ADDRESS") ?: "192.168.1.100"
                 val port = intent.getIntExtra("PORT", 8080)
+                val resultCode = intent.getIntExtra("RESULT_CODE", 0)
+                val data = intent.getParcelableExtra<Intent>("DATA")
+                
                 startForeground(NOTIFICATION_ID, createNotification())
-                startStreaming(ipAddress, port)
+                startStreaming(ipAddress, port, resultCode, data)
             }
             "STOP_STREAMING" -> {
                 stopStreaming()
@@ -98,33 +106,43 @@ class AudioStreamService : Service() {
         return START_STICKY
     }
     
-    private fun startStreaming(ipAddress: String, port: Int) {
+    private fun startStreaming(ipAddress: String, port: Int, resultCode: Int, data: Intent?) {
         if (isStreaming) return
-        
         isStreaming = true
         
         serviceScope.launch {
             try {
                 Log.d("AudioStream", "Connecting to $ipAddress:$port")
-                
-                // Connect to desktop
                 socket = Socket(ipAddress, port)
                 outputStream = socket?.getOutputStream()
-                
                 Log.d("AudioStream", "Connected successfully")
                 
-                // Initialize AudioRecord with REMOTE_SUBMIX for system audio
-                audioRecord = try {
-                    AudioRecord(
-                        MediaRecorder.AudioSource.REMOTE_SUBMIX,
-                        SAMPLE_RATE,
-                        CHANNEL_CONFIG,
-                        AUDIO_FORMAT,
-                        BUFFER_SIZE
-                    )
-                } catch (e: SecurityException) {
-                    // Fallback to MIC if REMOTE_SUBMIX fails
-                    AudioRecord(
+                // Initialize AudioRecord based on Android Version
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && data != null) {
+                    // Android 10+: Capture Internal Audio
+                    val mediaProjectionManager = getSystemService(MediaProjectionManager::class.java)
+                    mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data)
+                    
+                    val config = AudioPlaybackCaptureConfiguration.Builder(mediaProjection!!)
+                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                        .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                        .build()
+
+                    val format = AudioFormat.Builder()
+                        .setEncoding(AUDIO_FORMAT)
+                        .setSampleRate(SAMPLE_RATE)
+                        .setChannelMask(CHANNEL_CONFIG)
+                        .build()
+
+                    audioRecord = AudioRecord.Builder()
+                        .setAudioFormat(format)
+                        .setBufferSizeInBytes(BUFFER_SIZE)
+                        .setAudioPlaybackCaptureConfig(config)
+                        .build()
+                } else {
+                    // Pre-Android 10: Fallback to Microphone
+                    audioRecord = AudioRecord(
                         MediaRecorder.AudioSource.MIC,
                         SAMPLE_RATE,
                         CHANNEL_CONFIG,
@@ -134,7 +152,6 @@ class AudioStreamService : Service() {
                 }
                 
                 audioRecord?.startRecording()
-                
                 val buffer = ByteArray(BUFFER_SIZE)
                 
                 while (isStreaming && socket?.isConnected == true) {
@@ -148,22 +165,17 @@ class AudioStreamService : Service() {
                             break
                         }
                     }
-                    
-                    // Keep wake lock alive
                     if (!wakeLock.isHeld) {
                         wakeLock.acquire(10*60*1000L)
                     }
                 }
-                
             } catch (e: Exception) {
                 Log.e("AudioStream", "Streaming error", e)
             } finally {
                 cleanup()
-                
-                // Try to reconnect after delay
                 if (isStreaming) {
                     delay(5000)
-                    startStreaming(ipAddress, port)
+                    startStreaming(ipAddress, port, resultCode, data)
                 }
             }
         }
@@ -182,12 +194,14 @@ class AudioStreamService : Service() {
         try {
             audioRecord?.stop()
             audioRecord?.release()
+            mediaProjection?.stop()
             outputStream?.close()
             socket?.close()
         } catch (e: Exception) {
             e.printStackTrace()
         }
         audioRecord = null
+        mediaProjection = null
         outputStream = null
         socket = null
     }
