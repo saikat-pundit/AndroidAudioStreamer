@@ -1,7 +1,9 @@
 package com.example.audiostreamer
 
+import android.app.Activity
 import android.content.Intent
 import android.content.SharedPreferences
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +13,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -21,12 +24,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var stopButton: Button
     private lateinit var statusText: TextView
     private lateinit var prefs: SharedPreferences
+    private lateinit var mediaProjectionManager: MediaProjectionManager
+    
+    // Launcher to request screen/audio capture permission
+    private val screenCaptureLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            startAudioService(result.resultCode, result.data!!)
+        } else {
+            Toast.makeText(this, "Permission denied to capture audio", Toast.LENGTH_SHORT).show()
+            updateStatus(false)
+        }
+    }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
-        // Initialize views
         ipAddressInput = findViewById(R.id.ipAddressInput)
         portInput = findViewById(R.id.portInput)
         startButton = findViewById(R.id.startButton)
@@ -34,43 +49,52 @@ class MainActivity : AppCompatActivity() {
         statusText = findViewById(R.id.statusText)
         
         prefs = getSharedPreferences("AudioStreamer", MODE_PRIVATE)
+        mediaProjectionManager = getSystemService(MediaProjectionManager::class.java)
         
-        // Load saved settings
         ipAddressInput.setText(prefs.getString("ip_address", "192.168.1.100"))
         portInput.setText(prefs.getString("port", "8080"))
         
-        // Set click listeners
-        startButton.setOnClickListener { startStreaming() }
+        startButton.setOnClickListener { startStreamingProcess() }
         stopButton.setOnClickListener { stopStreaming() }
         
-        // Check if service is running
         updateStatus(false)
     }
     
-    private fun startStreaming() {
+    private fun startStreamingProcess() {
         val ipAddress = ipAddressInput.text.toString()
-        val port = portInput.text.toString().toIntOrNull() ?: 8080
-        
         if (ipAddress.isEmpty()) {
             Toast.makeText(this, "Please enter IP address", Toast.LENGTH_SHORT).show()
             return
         }
         
-        // Save settings
         prefs.edit().apply {
             putString("ip_address", ipAddress)
-            putString("port", port.toString())
+            putString("port", portInput.text.toString())
             apply()
         }
         
-        // Request permissions first
         PermissionManager(this).requestAllPermissions()
         
-        // Start service
+        // For Android 10+, request MediaProjection permission to capture internal audio
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val intent = mediaProjectionManager.createScreenCaptureIntent()
+            screenCaptureLauncher.launch(intent)
+        } else {
+            // Fallback for older Android versions (will only capture MIC)
+            startAudioService(Activity.RESULT_OK, Intent())
+        }
+    }
+    
+    private fun startAudioService(resultCode: Int, data: Intent) {
+        val ipAddress = ipAddressInput.text.toString()
+        val port = portInput.text.toString().toIntOrNull() ?: 8080
+        
         val intent = Intent(this, AudioStreamService::class.java).apply {
+            action = "START_STREAMING"
             putExtra("IP_ADDRESS", ipAddress)
             putExtra("PORT", port)
-            action = "START_STREAMING"
+            putExtra("RESULT_CODE", resultCode)
+            putExtra("DATA", data)
         }
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -88,9 +112,7 @@ class MainActivity : AppCompatActivity() {
             action = "STOP_STREAMING"
         }
         startService(intent)
-        
         updateStatus(false)
-        Toast.makeText(this, "Streaming stopped", Toast.LENGTH_SHORT).show()
     }
     
     private fun updateStatus(isStreaming: Boolean) {
@@ -107,8 +129,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    // (Your PermissionManager class remains exactly the same here)
     class PermissionManager(private val activity: MainActivity) {
-        
         fun requestAllPermissions() {
             requestRecordAudio()
             requestBatteryOptimization()
@@ -117,12 +139,8 @@ class MainActivity : AppCompatActivity() {
         
         private fun requestRecordAudio() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (activity.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
-                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    activity.requestPermissions(
-                        arrayOf(android.Manifest.permission.RECORD_AUDIO),
-                        1001
-                    )
+                if (activity.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    activity.requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 1001)
                 }
             }
         }
@@ -141,12 +159,8 @@ class MainActivity : AppCompatActivity() {
         
         private fun requestNotificationPermission() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    activity.requestPermissions(
-                        arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
-                        1002
-                    )
+                if (activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    activity.requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1002)
                 }
             }
         }
