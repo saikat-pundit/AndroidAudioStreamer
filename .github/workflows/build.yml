@@ -23,19 +23,11 @@ jobs:
 
     - name: Prepare Logo
       run: |
-        # Create all required mipmap folders
+       # Create all required mipmap folders
         for resolution in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-          mkdir -p app/src/main/res/mipmap-$resolution
+        mkdir -p app/src/main/res/mipmap-$resolution
+        cp logo.png app/src/main/res/mipmap-$resolution/ic_launcher.png
         done
-        
-        # Copy logo to all folders (using same logo for all resolutions)
-        for resolution in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-          cp logo.png app/src/main/res/mipmap-$resolution/ic_launcher.png
-        done
-        
-        # Also copy for adaptive icon (Android 8+)
-        mkdir -p app/src/main/res/mipmap-anydpi-v26
-        cp logo.png app/src/main/res/mipmap-anydpi-v26/ic_launcher.png
 
     - name: Build with Gradle
       run: gradle assembleDebug
