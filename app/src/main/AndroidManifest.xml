@@ -2,37 +2,34 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ========== AUDIO CAPTURE PERMISSIONS ========== -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
     
-    <!-- ========== NETWORK PERMISSIONS ========== -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     
-    <!-- ========== BOOT & PERSISTENCE PERMISSIONS ========== -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     
-    <!-- ========== NOTIFICATION PERMISSIONS ========== -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"         android:roundIcon="@mipmap/ic_launcher"    android:label="Streamer"
+        android:icon="@drawable/logo"
+        android:roundIcon="@drawable/logo"
+        android:label="Streamer"
         android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
-    android:persistent="true"
-    android:largeHeap="true"
-    android:usesCleartextTraffic="true"
-    android:networkSecurityConfig="@xml/network_security_config"
-    tools:targetApi="31">
+        android:persistent="true"
+        android:largeHeap="true"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="31">
         
-        <!-- ========== MAIN ACTIVITY ========== -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -44,7 +41,6 @@
             </intent-filter>
         </activity>
 
-        <!-- ========== AUDIO STREAM SERVICE (Main) ========== -->
         <service
             android:name=".AudioStreamService"
             android:enabled="true"
@@ -53,7 +49,6 @@
             android:foregroundServiceType="mediaProjection">
         </service>
 
-        <!-- ========== KEEP ALIVE SERVICE (Separate Process) ========== -->
         <service
             android:name=".KeepAliveService"
             android:enabled="true"
@@ -62,7 +57,6 @@
             android:stopWithTask="false"
             android:foregroundServiceType="mediaProjection" />
 
-        <!-- ========== HEARTBEAT SERVICE (Separate Process) ========== -->
         <service
             android:name=".HeartbeatService"
             android:enabled="true"
@@ -70,7 +64,6 @@
             android:process=":heartbeat"
             android:stopWithTask="false" />
 
-        <!-- ========== BOOT RECEIVER ========== -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
@@ -83,7 +76,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- ========== RESTART RECEIVER ========== -->
         <receiver
             android:name=".RestartReceiver"
             android:enabled="true"
