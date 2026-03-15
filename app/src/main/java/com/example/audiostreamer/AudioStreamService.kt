@@ -36,8 +36,8 @@ class AudioStreamService : Service() {
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
-    private val SAMPLE_RATE = 44100
-    private val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
+    private val SAMPLE_RATE = 48000
+    private val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO
     private val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
     private val BUFFER_SIZE = AudioRecord.getMinBufferSize(
         SAMPLE_RATE, 
