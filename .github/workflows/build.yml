@@ -23,7 +23,10 @@ jobs:
 
     - name: Prepare Logo
       run: |
+        # Create the mipmap folder (standard for app icons)
         mkdir -p app/src/main/res/mipmap-xxxhdpi
+        
+        # Rename logo.png to ic_launcher.png so Android treats it as the primary icon
         cp logo.png app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
     
     - name: Build with Gradle
