@@ -23,12 +23,20 @@ jobs:
 
     - name: Prepare Logo
       run: |
-        # Create the mipmap folder (standard for app icons)
-        mkdir -p app/src/main/res/mipmap-xxxhdpi
+        # Create all required mipmap folders
+        for resolution in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+          mkdir -p app/src/main/res/mipmap-$resolution
+        done
         
-        # Rename logo.png to ic_launcher.png so Android treats it as the primary icon
-        cp logo.png app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-    
+        # Copy logo to all folders (using same logo for all resolutions)
+        for resolution in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+          cp logo.png app/src/main/res/mipmap-$resolution/ic_launcher.png
+        done
+        
+        # Also copy for adaptive icon (Android 8+)
+        mkdir -p app/src/main/res/mipmap-anydpi-v26
+        cp logo.png app/src/main/res/mipmap-anydpi-v26/ic_launcher.png
+
     - name: Build with Gradle
       run: gradle assembleDebug
 
