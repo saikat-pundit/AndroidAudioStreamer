@@ -148,4 +148,49 @@
             android:layout_marginTop="20dp"/>
 
     </LinearLayout>
+    <LinearLayout
+        android:id="@+id/webcamContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/webcamStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Webcam: Stopped"
+            android:textColor="#FF4444"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="16dp"/>
+
+        <androidx.camera.view.PreviewView
+            android:id="@+id/viewFinder"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/toggleWebcamButton"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="START WEBCAM SERVER"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#FF9800" />
+            
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open http://[Device-IP]:8081 in desktop browser"
+            android:textColor="#666666"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginTop="12dp"/>
+    </LinearLayout>
 </LinearLayout>
