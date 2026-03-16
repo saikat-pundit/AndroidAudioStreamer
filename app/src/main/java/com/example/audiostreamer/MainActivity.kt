@@ -10,23 +10,34 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.tabs.TabLayout
 import java.net.Inet4Address
 import java.net.NetworkInterface
+
 class MainActivity : AppCompatActivity() {
+    
+    // UI Elements
+    private lateinit var tabLayout: TabLayout
+    private lateinit var streamingContainer: LinearLayout
+    private lateinit var ftpContainer: LinearLayout
     
     private lateinit var toggleFtpButton: Button
     private lateinit var ftpStatusText: TextView
-    private var isFtpRunning = false
     private lateinit var ipAddressInput: EditText
     private lateinit var portInput: EditText
     private lateinit var toggleStreamButton: Button
     private lateinit var statusText: TextView
+    
+    // State & Managers
+    private var isFtpRunning = false
     private lateinit var prefs: SharedPreferences
     private lateinit var mediaProjectionManager: MediaProjectionManager
     
@@ -45,6 +56,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         
+        // Bind UI Elements
+        tabLayout = findViewById(R.id.tabLayout)
+        streamingContainer = findViewById(R.id.streamingContainer)
+        ftpContainer = findViewById(R.id.ftpContainer)
+        
         ipAddressInput = findViewById(R.id.ipAddressInput)
         portInput = findViewById(R.id.portInput)
         toggleStreamButton = findViewById(R.id.toggleStreamButton)
@@ -58,6 +74,25 @@ class MainActivity : AppCompatActivity() {
         ipAddressInput.setText(prefs.getString("ip_address", "192.168.1.100"))
         portInput.setText(prefs.getString("port", "8080"))
         
+        // Setup Tab Navigation
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                when (tab?.position) {
+                    0 -> { // Streaming Tab
+                        streamingContainer.visibility = View.VISIBLE
+                        ftpContainer.visibility = View.GONE
+                    }
+                    1 -> { // FTP Tab
+                        streamingContainer.visibility = View.GONE
+                        ftpContainer.visibility = View.VISIBLE
+                    }
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+            override fun onTabReselected(tab: TabLayout.Tab?) {}
+        })
+        
+        // Button Listeners
         toggleStreamButton.setOnClickListener {
             if (toggleStreamButton.text.toString() == "START STREAMING") {
                 startStreamingProcess()
@@ -104,6 +139,7 @@ class MainActivity : AppCompatActivity() {
             toggleFtpButton.backgroundTintList = getColorStateList(android.R.color.holo_blue_dark)
         }
     }
+
     private fun getLocalIpAddress(): String {
         try {
             val interfaces = NetworkInterface.getNetworkInterfaces()
@@ -119,6 +155,7 @@ class MainActivity : AppCompatActivity() {
         }
         return "Unknown_IP"
     }
+
     private fun startStreamingProcess() {
         val ipAddress = ipAddressInput.text.toString()
         if (ipAddress.isEmpty()) {
