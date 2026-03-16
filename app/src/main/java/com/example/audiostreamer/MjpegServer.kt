@@ -4,32 +4,41 @@ import android.util.Log
 import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
-
+// Embedded MJPEG Server Class
 class MjpegServer(private val port: Int) {
     @Volatile var isRunning = false
     @Volatile var currentJpeg: ByteArray? = null
     private var serverThread: Thread? = null
+    private var serverSocket: ServerSocket? = null // Added to track the socket
 
     fun start() {
         if (isRunning) return
         isRunning = true
         serverThread = Thread {
-            val serverSocket = ServerSocket(port)
-            while (isRunning) {
-                try {
-                    val client = serverSocket.accept()
-                    handleClient(client)
-                } catch (e: Exception) {
-                    Log.e("MjpegServer", "Accept error", e)
+            try {
+                serverSocket = ServerSocket(port)
+                while (isRunning) {
+                    try {
+                        // This blocks until a browser connects
+                        val client = serverSocket!!.accept() 
+                        handleClient(client)
+                    } catch (e: Exception) {
+                        // Normal exception when serverSocket is closed by stop()
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e("MjpegServer", "Port already in use or binding error", e)
+            } finally {
+                try { serverSocket?.close() } catch (e: Exception) {}
             }
-            serverSocket.close()
         }
         serverThread?.start()
     }
 
     fun stop() {
         isRunning = false
+        // Forcibly close the socket to unblock the accept() method and free the port!
+        try { serverSocket?.close() } catch (e: Exception) {} 
         serverThread?.interrupt()
     }
 
@@ -37,14 +46,12 @@ class MjpegServer(private val port: Int) {
         Thread {
             try {
                 val out: OutputStream = socket.getOutputStream()
-                // Send the standard MJPEG HTTP headers
                 out.write(("HTTP/1.0 200 OK\r\n" +
                         "Connection: close\r\n" +
                         "Cache-Control: no-cache\r\n" +
                         "Pragma: no-cache\r\n" +
                         "Content-type: multipart/x-mixed-replace; boundary=--BoundaryString\r\n\r\n").toByteArray())
 
-                // Continuously stream the latest JPEG frame
                 while (isRunning && socket.isConnected) {
                     currentJpeg?.let { jpeg ->
                         out.write(("--BoundaryString\r\n" +
@@ -54,12 +61,12 @@ class MjpegServer(private val port: Int) {
                         out.write("\r\n\r\n".toByteArray())
                         out.flush()
                     }
-                    Thread.sleep(33) // ~30 fps target
+                    Thread.sleep(33) // ~30 fps
                 }
             } catch (e: Exception) {
-                // Client naturally disconnected
+                // Ignore disconnects
             } finally {
-                socket.close()
+                try { socket.close() } catch (e: Exception) {}
             }
         }.start()
     }
