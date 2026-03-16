@@ -16,7 +16,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-
+import java.net.Inet4Address
+import java.net.NetworkInterface
 class MainActivity : AppCompatActivity() {
     
     private lateinit var toggleFtpButton: Button
@@ -91,7 +92,8 @@ class MainActivity : AppCompatActivity() {
     
     private fun updateFtpStatus() {
         if (isFtpRunning) {
-            ftpStatusText.text = "FTP: ftp://YOUR_IP:2121"
+            val deviceIp = getLocalIpAddress()
+            ftpStatusText.text = "FTP: ftp://$deviceIp:2121"
             ftpStatusText.setTextColor(getColor(android.R.color.holo_blue_light))
             toggleFtpButton.text = "STOP FTP SERVER"
             toggleFtpButton.backgroundTintList = getColorStateList(android.R.color.holo_red_dark)
@@ -102,7 +104,21 @@ class MainActivity : AppCompatActivity() {
             toggleFtpButton.backgroundTintList = getColorStateList(android.R.color.holo_blue_dark)
         }
     }
-    
+    private fun getLocalIpAddress(): String {
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            for (intf in interfaces) {
+                for (addr in intf.inetAddresses) {
+                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
+                        return addr.hostAddress ?: "Unknown_IP"
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return "Unknown_IP"
+    }
     private fun startStreamingProcess() {
         val ipAddress = ipAddressInput.text.toString()
         if (ipAddress.isEmpty()) {
