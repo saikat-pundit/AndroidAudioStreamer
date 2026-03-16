@@ -1,5 +1,5 @@
 package com.example.audiostreamer
-
+import android.os.Environment
 import android.app.Activity
 import android.content.Intent
 import android.content.SharedPreferences
@@ -17,7 +17,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
-    
+    private lateinit var toggleFtpButton: Button
+    private lateinit var ftpStatusText: TextView
+    private var isFtpRunning = false
     private lateinit var ipAddressInput: EditText
     private lateinit var portInput: EditText
     private lateinit var toggleStreamButton: Button
